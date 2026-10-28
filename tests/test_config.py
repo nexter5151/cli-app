@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.config import ConfigError, load_config
+from src.graph import DependencyGraph
 from src.main import run
-from src.maven import MavenCoordinate
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -86,12 +86,17 @@ class TestLoadErrors(unittest.TestCase):
 
 
 class TestRun(unittest.TestCase):
-    @patch("src.main.fetch_direct_dependencies")
-    def test_run_ok(self, mock_fetch) -> None:
-        mock_fetch.return_value = [
-            MavenCoordinate("org.hamcrest", "hamcrest-core", "1.3"),
-        ]
-        code = run(["--config", str(EXAMPLES / "config.ok.ini")])
+    @patch("src.main.build_graph_bfs")
+    @patch("src.main.make_dependency_getter")
+    def test_run_ok(self, mock_getter, mock_bfs) -> None:
+        mock_getter.return_value = lambda _pkg: []
+        mock_bfs.return_value = DependencyGraph(
+            root="A",
+            edges={"A": ["B"], "B": []},
+        )
+        code = run(
+            ["--config", str(EXAMPLES / "config.test_mode.ini")]
+        )
         self.assertEqual(code, 0)
 
     def test_run_error(self) -> None:
@@ -99,6 +104,12 @@ class TestRun(unittest.TestCase):
             ["--config", str(EXAMPLES / "config.bad_depth.ini")]
         )
         self.assertEqual(code, 1)
+
+    def test_run_test_mode_live(self) -> None:
+        code = run(
+            ["--config", str(EXAMPLES / "config.test_mode.ini")]
+        )
+        self.assertEqual(code, 0)
 
 
 if __name__ == "__main__":

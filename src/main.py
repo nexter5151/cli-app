@@ -1,4 +1,4 @@
-"""Точка входа CLI: конфигурация и прямые зависимости Maven."""
+"""Точка входа CLI: граф зависимостей (BFS)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 from src.config import ConfigError, load_config
-from src.repository import RepositoryError, fetch_direct_dependencies
+from src.graph import build_graph_bfs
+from src.providers import ProviderError, make_dependency_getter
+from src.test_repo import TestRepoError
 
 _EXIT_OK = 0
 _EXIT_ERROR = 1
@@ -33,18 +35,20 @@ def run(argv: list[str] | None = None) -> int:
     config_path = parse_cli_args(argv)
     try:
         config = load_config(config_path)
-        deps = fetch_direct_dependencies(
+        get_deps = make_dependency_getter(config)
+        graph = build_graph_bfs(
             config.package_name,
-            config.repository,
+            config.max_depth,
+            get_deps,
         )
-    except (ConfigError, RepositoryError) as exc:
+    except (ConfigError, ProviderError, TestRepoError) as exc:
         print(str(exc), file=sys.stderr)
         return _EXIT_ERROR
-    if not deps:
-        print("No direct dependencies")
-        return _EXIT_OK
-    for dep in deps:
-        print(dep.format())
+    text = graph.format_edges()
+    if text:
+        print(text)
+    else:
+        print(graph.root)
     return _EXIT_OK
 
 
