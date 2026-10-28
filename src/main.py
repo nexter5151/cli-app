@@ -1,4 +1,4 @@
-"""Точка входа CLI: загрузка конфигурации и вывод параметров."""
+"""Точка входа CLI: конфигурация и прямые зависимости Maven."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from src.config import ConfigError, load_config
+from src.repository import RepositoryError, fetch_direct_dependencies
 
 _EXIT_OK = 0
 _EXIT_ERROR = 1
@@ -32,10 +33,18 @@ def run(argv: list[str] | None = None) -> int:
     config_path = parse_cli_args(argv)
     try:
         config = load_config(config_path)
-    except ConfigError as exc:
+        deps = fetch_direct_dependencies(
+            config.package_name,
+            config.repository,
+        )
+    except (ConfigError, RepositoryError) as exc:
         print(str(exc), file=sys.stderr)
         return _EXIT_ERROR
-    print(config.format_dump())
+    if not deps:
+        print("No direct dependencies")
+        return _EXIT_OK
+    for dep in deps:
+        print(dep.format())
     return _EXIT_OK
 
 

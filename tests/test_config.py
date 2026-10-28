@@ -3,9 +3,11 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src.config import ConfigError, load_config
 from src.main import run
+from src.maven import MavenCoordinate
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,10 +17,7 @@ EXAMPLES = ROOT / "examples"
 class TestLoadOk(unittest.TestCase):
     def test_ok_config(self) -> None:
         cfg = load_config(EXAMPLES / "config.ok.ini")
-        self.assertEqual(
-            cfg.package_name,
-            "org.apache.commons:commons-lang3:3.14.0",
-        )
+        self.assertEqual(cfg.package_name, "junit:junit:4.13.2")
         self.assertFalse(cfg.test_mode)
         self.assertTrue(cfg.ascii_tree)
         self.assertEqual(cfg.max_depth, 3)
@@ -87,7 +86,11 @@ class TestLoadErrors(unittest.TestCase):
 
 
 class TestRun(unittest.TestCase):
-    def test_run_ok(self) -> None:
+    @patch("src.main.fetch_direct_dependencies")
+    def test_run_ok(self, mock_fetch) -> None:
+        mock_fetch.return_value = [
+            MavenCoordinate("org.hamcrest", "hamcrest-core", "1.3"),
+        ]
         code = run(["--config", str(EXAMPLES / "config.ok.ini")])
         self.assertEqual(code, 0)
 

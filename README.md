@@ -6,8 +6,8 @@
 Maven (вариант №4). Готовые менеджеры пакетов и сторонние библиотеки
 для получения зависимостей не используются.
 
-Реализован этап 1: минимальный CLI-прототип с конфигурацией из
-INI-файла, вывод параметров и обработка ошибок.
+Реализованы этапы 1–2: CLI с INI-конфигурацией и сбор прямых
+зависимостей пакета из Maven-репозитория по HTTP (stdlib).
 
 Язык реализации: Python 3 (стандартная библиотека).
 
@@ -17,38 +17,39 @@ INI-файла, вывод параметров и обработка ошибо
 
 | Файл | Назначение |
 |------|------------|
-| `src/main.py` | Точка входа CLI, вывод параметров |
+| `src/main.py` | Точка входа CLI |
 | `src/config.py` | Чтение и проверка INI-конфигурации |
+| `src/maven.py` | Координаты GAV и разбор POM |
+| `src/repository.py` | Загрузка POM по URL репозитория |
 
 ### Параметры INI (`[app]`)
 
 | Ключ | Описание |
 |------|----------|
-| `package_name` | Имя анализируемого пакета |
-| `repository` | URL репозитория или путь к тестовому файлу |
-| `test_mode` | Режим тестового репозитория (`true`/`false`) |
+| `package_name` | Пакет `groupId:artifactId:version` |
+| `repository` | URL Maven-репозитория или путь (этап 3) |
+| `test_mode` | Режим тестового репозитория |
 | `output_image` | Имя файла с изображением графа |
 | `ascii_tree` | Вывод зависимостей ASCII-деревом |
 | `max_depth` | Максимальная глубина анализа (>= 0) |
 
-### Описание функций (этап 1)
+### Описание функций (этап 2)
 
-#### `src/config.py`
-
-| Имя | Назначение |
-|-----|------------|
-| `AppConfig` | Неизменяемая структура параметров. |
-| `AppConfig.format_dump()` | Текст `ключ=значение` по строкам. |
-| `load_config(path)` | Загрузка INI; при ошибке — `ConfigError`. |
-| `ConfigError` | Исключение ошибок конфигурации. |
-
-#### `src/main.py`
+#### `src/maven.py`
 
 | Имя | Назначение |
 |-----|------------|
-| `parse_cli_args(argv)` | Разбор `--config PATH`. |
-| `run(argv)` | Загрузка конфига, вывод параметров, код выхода. |
-| `main()` | Точка входа модуля. |
+| `MavenCoordinate` | GAV-координаты пакета. |
+| `parse_coordinate(text)` | Разбор `group:artifact:version`. |
+| `parse_pom_dependencies(text)` | Прямые зависимости из POM XML. |
+
+#### `src/repository.py`
+
+| Имя | Назначение |
+|-----|------------|
+| `build_pom_url(repo, coord)` | URL `.../artifact-version.pom`. |
+| `fetch_pom_text(url)` | HTTP-загрузка POM. |
+| `fetch_direct_dependencies(...)` | Координаты → список зависимостей. |
 
 ### Аргументы командной строки
 
@@ -56,12 +57,13 @@ INI-файла, вывод параметров и обработка ошибо
 |----------|----------|
 | `--config PATH` | Путь к INI-файлу (обязателен) |
 
-При успешном запуске на stdout печатаются все параметры в формате
-`ключ=значение`. Ошибки конфигурации — в stderr, код выхода 1.
+На этапе 2 при успешном запуске на stdout печатаются прямые
+зависимости (`groupId:artifactId:version`), по одной на строку.
+Ошибки — в stderr, код выхода 1.
 
 ## 3. Сборка и запуск
 
-Сборка не требуется.
+Сборка не требуется. Нужен доступ в сеть к Maven-репозиторию.
 
 ### Запуск
 
@@ -73,13 +75,15 @@ INI-файла, вывод параметров и обработка ошибо
 python3 -m src.main --config examples/config.ok.ini
 ```
 
-### Скрипты проверки (этап 1)
+### Скрипты проверки
 
 ```bash
 chmod +x run.sh scripts/*.sh
 ./scripts/test_ok.sh
 ./scripts/test_test_mode.sh
 ./scripts/test_errors.sh
+./scripts/test_stage2.sh
+./scripts/test_stage2_missing.sh
 ```
 
 ### Тесты
@@ -90,24 +94,16 @@ python3 -m unittest discover -s tests -v
 
 ## 4. Примеры использования
 
-Успешный запуск:
+Прямые зависимости `junit:junit:4.13.2`:
 
 ```
-package_name=org.apache.commons:commons-lang3:3.14.0
-repository=https://repo.maven.apache.org/maven2
-test_mode=false
-output_image=graph.png
-ascii_tree=true
-max_depth=3
+org.hamcrest:hamcrest-core:1.3
 ```
 
 Ошибки:
 
 ```
-config: examples/no-such.ini: no such file
-config: ...: missing key 'max_depth'
 config: 'max_depth' must be >= 0, got -1
-config: 'test_mode' must be boolean, got 'maybe'
-config: 'package_name' must not be empty
-config: ...: missing section [app]
+package_name must be groupId:artifactId:version, ...
+repository: HTTP 404 for https://...
 ```
