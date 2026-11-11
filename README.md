@@ -146,7 +146,18 @@ python3 -m src.main --config examples/config.reverse_deep.ini --reverse
 
 Примеры трёх графов: `config.test_mode.ini`, `config.test_cycle.ini`,
 `config.test_deep.ini`. Измените `ascii_tree` на `true` для вывода дерева.
-Сравнение с `mvn dependency:tree` ещё не выполнено: Maven не установлен.
-При сравнении возможны расхождения из-за scope, наследования POM,
-управления версиями и разрешения конфликтов, которые здесь поддерживаются
-не полностью.
+Сравнение с Maven (`maven-dependency-plugin:3.8.1:tree`, `-Dverbose`)
+проведено для отдельных проектов с одной зависимостью, глубина CLI — 3:
+
+- `junit:junit:4.13.2`: Maven показывает `hamcrest-core:1.3`;
+  CLI дополнительно показывает `hamcrest-library:1.3` и его зависимость
+  `hamcrest-core:1.3`. В POM JUnit для `hamcrest-library` указан
+  `scope=test`: Maven не включает его как транзитивную зависимость,
+  тогда как CLI пока не фильтрует scope.
+- `org.hamcrest:hamcrest-core:1.3`: оба вывода не содержат детей.
+- `org.hamcrest:hamcrest-library:1.3`: оба вывода показывают прямую
+  зависимость `hamcrest-core:1.3`.
+
+Maven также учитывает наследование POM, управление версиями и разрешение
+конфликтов; их поддержка в CLI неполная. При сравнении Maven показывает
+корень временного проекта и добавленные поля `jar` и `scope`.
