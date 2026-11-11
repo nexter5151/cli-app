@@ -11,6 +11,7 @@ from src.graph import build_graph_bfs
 from src.providers import ProviderError, make_dependency_getter
 from src.reverse import reverse_getter
 from src.test_repo import TestRepoError, load_test_repo
+from src.visualization import VisualizationError, format_ascii, save_png
 
 _EXIT_OK = 0
 _EXIT_ERROR = 1
@@ -51,10 +52,12 @@ def run(argv: list[str] | None = None) -> int:
             config.max_depth,
             get_deps,
         )
-    except (ConfigError, ProviderError, TestRepoError) as exc:
+        save_png(graph, config.output_image)
+    except (ConfigError, ProviderError, TestRepoError,
+            VisualizationError) as exc:
         print(str(exc), file=sys.stderr)
         return _EXIT_ERROR
-    text = graph.format_edges()
+    text = format_ascii(graph) if config.ascii_tree else graph.format_edges()
     if text:
         print(text)
     else:
