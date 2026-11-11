@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 GetDeps = Callable[[str], list[str]]
+_MAVEN_COORDINATE_PARTS = 3
 
 
 @dataclass
@@ -26,6 +27,7 @@ class DependencyGraph:
                 continue
             for target in targets:
                 lines.append(f"{source} -> {target}")
+                lines.append(f"  version requirement: {_requirement(target)}")
         return "\n".join(lines)
 
 
@@ -51,3 +53,13 @@ def build_graph_bfs(
             visited.add(child)
             queue.append((child, depth + 1))
     return graph
+
+
+def _requirement(package: str) -> str:
+    """Вернуть требование версии из координат Maven."""
+    parts = package.split(":")
+    if len(parts) != _MAVEN_COORDINATE_PARTS:
+        return "not specified"
+    if parts[-1] == "unknown":
+        return "not specified"
+    return parts[-1]

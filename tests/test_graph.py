@@ -63,3 +63,13 @@ class TestBfs(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVersionRequirement(unittest.TestCase):
+    def test_range_and_missing_requirement(self) -> None:
+        graph = build_graph_bfs(
+            "root", 1, lambda _: ["org.example:lib:[1.0,2.0)", "A"]
+        )
+        text = graph.format_edges()
+        self.assertIn("version requirement: [1.0,2.0)", text)
+        self.assertIn("version requirement: not specified", text)
