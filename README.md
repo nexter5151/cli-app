@@ -113,3 +113,21 @@ A -> B
 B -> C
 C
 ```
+
+### Этап 4: обратные зависимости
+
+Флаг `--reverse` показывает пакеты, зависящие от `package_name`.
+Поиск доступен в тестовом режиме: весь файл репозитория используется
+для построения обратных рёбер, затем выполняется BFS с `max_depth`.
+Например, `D -> B` означает, что пакет B зависит от D.
+Циклы не приводят к бесконечному обходу.
+
+```bash
+python3 -m src.main --config examples/config.reverse_simple.ini --reverse
+python3 -m src.main --config examples/config.reverse_cycle.ini --reverse
+python3 -m src.main --config examples/config.reverse_deep.ini --reverse
+```
+
+В Maven-режиме поиск обратных зависимостей не реализован: Maven POM
+содержит прямые зависимости и не предоставляет полного списка пакетов,
+которые зависят от заданного.
